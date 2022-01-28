@@ -1,4 +1,7 @@
+
 const { user, feed, follow, like, comment } = require('../../models')
+
+const joi = require('joi')
 
 // -------------------- ADD FEED --------------------------
 
@@ -10,7 +13,7 @@ exports.postFeed = async (req, res) => {
         const newPost = {
             ...data,
             fileName : req.file.filename,
-            idUser : idUser
+            userFeed : idUser
         }
 
         await feed.create(newPost)
@@ -41,7 +44,7 @@ exports.deletePost = async (req, res) => {
         })
         
         if(!feedExist){
-            res.status(500).send({
+            return res.status(404).send({
                 status : 'failed',
                 message : 'feed not found'
             })
@@ -49,7 +52,7 @@ exports.deletePost = async (req, res) => {
 
         await feed.destroy({
             where : {
-                idUser : idUser,
+                userFeed : idUser,
                 id
             }
         })
@@ -74,49 +77,196 @@ exports.followingFeeds = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await user.findOne({
-            where : { id },
-            attributes : ['id'],
-            include : [
-                {
-                    model : follow,
-                    as : 'following',
-                    attributes : ['id'],
-                    include : [
-                        {
-                            model : user,
-                            as : 'following',
-                            attributes : ['id'],
-                            include : [
-                                {
-                                    model : feed,
-                                    as : 'feed',
-                                    attributes : {
-                                        exclude : [ 'createdAt', 'updatedAt']
-                                    },
-                                    include : [
-                                        {
-                                            model : user,
-                                            as : 'user'
-                                        }
-                                    ]
-                                }
-                            ]
+        const userData = await user.findOne({
+            attributes: [],
+            order: [["createdAt", "DESC"]],
+            where: {
+                id
+            },
+            include: {
+                model: follow,
+                as: 'following',
+                order: [["createdAt", "DESC"]],
+                attributes:["id", "createdAt"],
+                include: {
+
+                    model: user,
+                    as: 'following',
+                    order: [["createdAt", "DESC"]],
+                    attributes: ["id", "createdAt"] ,
+                    include: {
+
+                        model: feed,
+                        as: 'feed',
+                        order: [["createdAt", "DESC"]],
+                        attributes: {
+                            exclude: ['updatedAt']
+                        }, 
+                        include: {
+
+                            model: user,
+                            as: 'user',
+                            attributes: {
+                                exclude: ['updatedAt', 'bio', 'password', 'email']
+                            }
                         }
-                    ]
+                    },
                 },
-            ]
+            },
+        })
+
+        res.status(200).send({
+            status: 'success',
+            data: {
+                userData
+            }
+        })
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({
+            status: 'failed',
+            message: 'Server Error'
+        })
+    }
+}
+
+// -------------------- GET ALL FEED --------------------------
+
+exports.getFeeds = async (req, res) => {
+    try {
+        let data = await feed.findAll({
+            attributes: {
+                exclude: ['updatedAt', "createdAt"]
+            },
+            include : {
+                model : user,
+                as : 'user',
+                attributes: {
+                    exclude: ['updatedAt', 'bio', 'password', 'email', "createdAt"]
+                }
+            }
+        })
+
+        const path = process.env.PATH_UPLOAD
+        const parseJSON = JSON.parse(JSON.stringify(data))
+
+        data = parseJSON.map(item => {
+            return {
+                ...item,
+                fileName: path + item.fileName
+            }
         })
 
         res.status(200).send({
             status : 'success',
             data
         })
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({
+            status: 'failed',
+            message: 'Server Error'
+        })
+    }
+}
+
+// -------------------- LIKE --------------------------
+
+exports.likeFeed = async (req, res) => {
+    try {
+        const { idUser } = req
+
+        const { id } = req.body
+
+        const schema = joi.object({
+            id: joi.number().required()
+        }).validate(req.body)
+
+        if (schema.error) {
+            return res.send({
+                status: 'validation failed',
+                message: schema.error.details[0].message
+            })
+        }
+
+        const feedExist = await feed.findOne({
+            where : { id },
+        })
+
+        if(!feedExist){
+            return res.status(404).send({
+                status : 'failed',
+                message : 'feed not found'
+            })
+        }
+
+        // Check whether the feed is already liked or not
+        const check = await like.findOne({
+            where : {
+                idUser : idUser,
+                idFeed : id
+            }
+        })
+
+        // if the feed already liked
+        if(check){
+            await like.destroy({
+                where : { 
+                    idUser : idUser,
+                    idFeed : id
+                }
+            })
+            
+            const data = await feed.findOne({
+                where : { id }
+            })
+
+            const likes = data.like -= 1
+
+            await feed.update({like : likes}, {
+                where : {
+                    id
+                }
+            })
+
+            res.send({
+                status : 'success',
+                message : `User ${idUser} unlike feed id ${id}`
+            })
+
+            // if the feed is not liked
+        } else {
+
+            await like.create({
+                idFeed: id,
+                idUser: idUser
+            })
+
+            const datas = await feed.findOne({
+                where: {
+                    id
+                }
+            })
+
+            const likes = datas.like += 1
+            await feed.update({ like: likes }, {
+                where: {
+                    id
+                }
+            })
+            res.send({
+                status : 'success',
+                message : `User ${idUser} like feed id ${id}`
+            })
+        }
 
     } catch (error) {
+        console.log(error)
         res.status(500).send({
-            status : 'failed',
-            message : 'server error'
+            status: 'failed',
+            message: 'Server Error'
         })
     }
 }

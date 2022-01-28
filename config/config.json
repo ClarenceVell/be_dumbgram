@@ -2,7 +2,7 @@
   "development": {
     "username": "root",
     "password": null,
-    "database": "dumbgram3",
+    "database": "dumbgramm",
     "host": "localhost",
     "dialect": "mysql"
   },

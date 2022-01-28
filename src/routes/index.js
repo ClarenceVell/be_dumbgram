@@ -40,11 +40,14 @@ router.get('/messages/:id',auth, getMessage)
 
 // ------------------ FEED ROUTER --------------------
 
-const { postFeed, deletePost, followingFeeds } = require('../controllers/feed')
+const { postFeed, deletePost, followingFeeds, getFeeds, likeFeed } = require('../controllers/feed')
 
 router.post('/feed',auth, uploadFile("fileName"), postFeed)
 router.delete('/feed/:id',auth, deletePost)
-router.get('/feed', auth, followingFeeds)
+router.get('/feed/:id', auth, followingFeeds)
+router.get('/feeds', getFeeds)
+router.post('/like', auth, likeFeed)
+
 
 
 

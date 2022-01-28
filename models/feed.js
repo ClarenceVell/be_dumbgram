@@ -14,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       feed.belongsTo(models.user, {
         as: 'user',
         foreignKey: {
-          name: 'idUser'
+          name: 'userFeed'
         }
       })
     }
@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
   feed.init({
     fileName: DataTypes.STRING,
     caption: DataTypes.STRING,
-    idUser: DataTypes.INTEGER,
+    userFeed: DataTypes.INTEGER,
     like: DataTypes.INTEGER
   }, {
     sequelize,

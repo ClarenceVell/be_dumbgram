@@ -14,7 +14,7 @@ module.exports = {
       caption: {
         type: Sequelize.STRING
       },
-      idUser: {
+      userFeed: {
         type: Sequelize.INTEGER,
         references: {
           model: "users",
