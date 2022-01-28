@@ -270,3 +270,113 @@ exports.likeFeed = async (req, res) => {
         })
     }
 }
+
+// -------------------- ADD COMMENT --------------------------
+
+exports.addComment = async (req, res) => {
+    try {
+        const { idUser } = req
+
+        const { id } = req.body
+
+        const add = req.body.comment
+
+        const feedExist = await feed.findOne({
+            where : { id },
+        })
+
+        if(!feedExist){
+            return res.status(404).send({
+                status : 'failed',
+                message : 'feed not found'
+            })
+        }
+
+        const data = await comment.create({
+            idUser : idUser,
+            idFeed : id,
+            comment : add 
+        })
+
+        res.status(200).send({
+            status : 'success'
+        })
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({
+            status: 'failed',
+            message: 'Server Error'
+        })
+    }
+}
+
+// -------------------- GET COMMENTS --------------------------
+
+exports.feedComments = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const feedExist = await feed.findOne({
+            where : { id },
+        })
+
+        if(!feedExist){
+            return res.status(404).send({
+                status : 'failed',
+                message : 'feed not found'
+            })
+        }
+
+        const data = await comment.findAll({
+            where : {
+                idFeed : id
+            },
+            attributes : ['id', 'comment'],
+            include : {
+                model : user,
+                as : 'user',
+                attributes : ['id', 'fullname','username', 'image']
+            }
+        })
+        
+        res.status(200).send({
+            status : 'success',
+            data
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({
+            status: 'failed',
+            message: 'Server Error'
+        })
+    }
+}
+
+
+// -------------------- DELETE COMMENT --------------------------
+
+exports.deleteComment = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { idUser } = req
+
+        await comment.destroy({
+            where : {
+                id,
+                idUser : idUser
+            }
+        })
+
+        res.status(200).send({
+            status : 'success'
+        })
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({
+            status: 'failed',
+            message: 'Server Error'
+        })
+    }
+}
